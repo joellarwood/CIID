@@ -1,0 +1,80 @@
+---
+title: "Describe Clinical Data"
+author: "Joel Larwood"
+date: "29/04/2019"
+output: github_document
+---
+
+Raw data file imported (hard coded from Joel Larwoods device) to show names and retained variables. Along with descriptives of removed clinical variables. 
+
+Variables that are removed have been done so to prevent demographic information being matched with answers
+
+```{r message=FALSE}
+library(tidyverse)
+library(knitr)
+library(sjmisc)
+library(sjlabelled)
+```
+
+```{r message=FALSE}
+raw <- read_csv("~/Desktop/Data File Masters/Mater Arts in Helath/MYAHCB arts project data.csv")
+names(raw)
+```
+
+missing data 
+
+```{r}
+
+condense <- raw %>% filter (id > 0) %>% select(("id"),
+                                              contains("emotion"),
+                                               contains("TAS"),
+                                               contains("MUSE"),
+                                               contains("Aqol"),
+                                               contains("DERS"),
+                                               contains("music"),
+                                               contains("song"),
+                                               -contains("_2"))
+
+obs <- raw %>% filter (id > 0) %>% nrow()
+
+missvar <- data.frame(nacount=colSums(is.na(condense)))
+missvar$pctNA <- (missvar$nacount/obs)*100
+
+missp <- data.frame(row.names = condense$id, nacount=rowSums(is.na(condense)))
+
+missp$pctNA <- (missp$nacount/ncol(condense))*100
+```
+
+```{r}
+knitr::kable(missvar)
+```
+
+```{r}
+knitr::kable(missp)
+```
+
+Descriptives 
+
+```{r}
+condition <- raw %>% filter (id > 0) %>%  select(Diabetes, Autoimmune_IBD, Gynaecology, Chronicpain, Cancers, Epilepsy, Autism, Other) %>% add_labels(labels =c("No" = 0, "Yes" = 1))
+
+gender <- raw %>% filter (id > 0) %>%  select(gender) %>% add_labels(labels = c("Male" = 1, "Female" = 2))
+
+sjmisc::frq(condition) 
+
+sjmisc::frq(gender)
+
+table(raw$age)
+mean(raw$age, na.rm = T)
+sd(raw$age, na.rm = T)
+```
+
+Export condenses data set which will be analysed 
+
+```{r}
+write_csv(condense, path = "CIID_PublicData.csv")
+```
+
+
+
+
