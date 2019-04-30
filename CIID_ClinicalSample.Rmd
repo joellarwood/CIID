@@ -1,0 +1,216 @@
+---
+title: "Data Analysis"
+author: "Joel Larwood"
+date: "30/04/2019"
+output: github_document 
+---
+
+Data from clinical population to be reanalysed post stakeholder report. Only relevant data has been retained and amde public from previous deindetification script. 
+
+```{r message = FALSE}
+library(tidyverse)
+library(knitr)
+library(psych)
+library(apa)
+```
+
+```{r message = FALSE}
+cs <- read_csv("CIID_PublicData.csv")
+names(cs)
+```
+
+#Missing data 
+```{r}
+missvar <- data.frame(nacount=colSums(is.na(cs)))
+missvar$pctNA <- (missvar$nacount/(nrow(cs)))*100
+
+missp <- data.frame(row.names = cs$id, nacount=rowSums(is.na(cs)))
+
+missp$pctNA <- (missp$nacount/ncol(cs))*100
+
+knitr::kable(missvar)
+knitr::kable(missp)
+
+```
+
+###AQoL
+Script converted from .sps file "v11_6D_DOL_alg_140114.sps"
+
+#### Set up dimensions
+####Independent Living 
+```{r}
+cIL <- c("Aqol1_1", "Aqol2_1", "Aqol3_1", "Aqol4_1")
+```
+
+####Relationships 
+```{r}
+cRL <- c("Aqol5_1", "Aqol6_1", "Aqol7_1")
+```
+
+####Mental Health
+```{r}
+cMH <- c("Aqol8_1", "Aqol9_1", "Aqol10_1", "Aqol11_1")
+```
+
+####Coping
+```{r}
+cCOP <- c("Aqol12_1", "Aqol13_1", "Aqol14_1")
+```
+
+####Pain
+```{r}
+cPAIN <- c("Aqol15_1", "Aqol16_1", "Aqol17_1")
+```
+
+####Senses 
+```{r}
+cSEN <- c("Aqol18_1", "Aqol19_1", "Aqol20_1")
+```
+
+###Missing data and impute 
+
+####Calculate Missing Per Dimension
+```{r}
+cs$ILMiss <- cs %>% select(cIL) %>% is.na() %>% rowSums()
+cs$RLMiss <- cs %>% select(cRL) %>% is.na() %>% rowSums()
+cs$MHMiss <- cs %>% select(cMH) %>% is.na() %>% rowSums()
+cs$COPMiss <- cs %>% select(cCOP) %>% is.na() %>% rowSums()
+cs$PAINMiss <- cs %>% select(cPAIN) %>% is.na() %>% rowSums()
+cs$SENMiss <- cs %>% select(cSEN) %>% is.na() %>% rowSums()
+```
+
+
+####Calculate rounded mean per dimension
+```{r}
+
+cs$ILMean <- cs %>% select(cIL, ILMiss)  %>% rowMeans(na.rm=TRUE) %>% round()
+cs$RLMean <- cs %>% select(cRL, RLMiss)  %>% rowMeans(na.rm=TRUE) %>% round()
+cs$MHMean <- cs %>% select(cMH)  %>% rowMeans(na.rm=TRUE) %>% round()
+cs$COPMean <- cs %>% select(cCOP)  %>%  rowMeans(na.rm=TRUE) %>% round()
+cs$PAINMean <- cs %>% select(cPAIN)  %>%rowMeans(na.rm=TRUE) %>% round()
+cs$SENMean <- cs %>% select(cSEN)  %>%rowMeans(na.rm=TRUE) %>% round()
+
+cs %>% select(contains("Mean")) %>% head(50)
+```
+
+###Impute rounded means 
+When there is only 1 missing value replace that value with the rounded mean 
+
+```{r}
+
+cs %>% select(cIL, ILMean, ILMiss) %>% filter(ILMiss == 1) %>% head(50)
+cs$Aqol4_1 <- ifelse(is.na(cs$Aqol4_1), cs$ILMean, cs$Aqol4_1)
+
+cs %>% select(cRL, RLMean, RLMiss) %>% filter(RLMiss == 1) %>% head(50)
+cs$Aqol7_1 <- ifelse (is.na(cs$Aqol7_1), cs$MHMean, cs$Aqol7_1)
+
+cs %>% select(cMH, MHMean, MHMiss) %>% filter(MHMiss == 1) %>% head(50)
+
+cs$Aqol11_1 <- ifelse (is.na(cs$Aqol11_1), cs$MHMean, cs$Aqol11_1)
+
+cs %>% select(cCOP, COPMean, COPMiss) %>% filter(COPMiss == 1) %>% head(50)
+cs %>% select(cPAIN, PAINMean, PAINMiss) %>% filter(PAINMiss == 1) %>% head(50)
+cs %>% select(cSEN,SENMean, SENMiss) %>% filter(SENMiss == 1) %>% head(50)
+cs$Aqol18_1 <- ifelse (is.na(cs$Aqol18_1), cs$SENMean, cs$Aqol18_1)
+cs$Aqol20_1 <- ifelse(is.na(cs$Aqol20_1), cs$SENMean, cs$Aqol20_1)
+```
+
+###MUSE 
+####Missing Per Participant
+```{r}
+cs$MUSEMiss <- cs %>% select(contains("MUSE")) %>% is.na() %>% rowSums()
+
+cs %>% select(id, 
+              contains("MUSE")) %>% filter(MUSEMiss > 0) %>% kable(caption = "Participants with missing MUSE data")
+```
+
+All mising MUSE data have whole scale unanswered
+
+#Scores
+##AQoL
+###Get dimension scores 
+```{r}
+cs$ILtot <-  cs %>% select(cIL) %>% rowSums()
+cs$RLtot <-  cs %>% select(cRL) %>% rowSums()
+cs$MHtot <-  cs %>% select(cMH) %>% rowSums()
+cs$COPtot <-  cs %>% select(cCOP) %>% rowSums()
+cs$PAINtot <-  cs %>% select(cPAIN) %>% rowSums()
+cs$SENtot <-  cs %>% select(cSEN) %>% rowSums()
+
+cs %>% select(id, ILtot, RLtot, MHtot, COPtot, PAINtot, SENtot) %>% kable()
+```
+###Reliability 
+
+```{r eval=FALSE}
+cs %>% select(IL) %>% alpha()
+cs %>% select(RL) %>% alpha()
+cs %>% select(MH) %>% alpha()
+cs %>% select(COP) %>% alpha()
+cs %>% select(PAIN) %>% alpha()
+cs %>% select(SEN) %>% alpha()
+```
+
+
+##Toronto Alexithymia Scale 
+###Scores 
+```{r}
+cs %>% select(contains("TAS")) %>% names()
+
+cDID <- c("TAS1_1" , "TAS3_1" , "TAS6_1" , "TAS7_1" , "TAS9_1" , "TAS13_1" , "TAS14_1")
+cDDF <- c("TAS2_1" ,"TAS4_1R","TAS11_1","TAS12_1","TAS17_1")
+cEOT <- c("TAS5_1R" , "TAS8_1" , "TAS10_1R" , "TAS15_1" , "TAS18_1R" , "TAS19_1R" , "TAS20_1")
+
+cs <- cs %>% mutate(DID = cs %>% select(cDID) %>% rowSums()
+                    ,DDF = cs %>% select(cDDF) %>% rowSums()
+                    ,EOT = cs %>% select(cEOT) %>% rowSums()
+                    ,Alexithymia = DID + DDF + EOT)
+
+names(cs) 
+```
+###Alpha
+```{r}
+aDID <- cs %>% select(cDID) %>% alpha() 
+print(aDID$total$std.alpha)
+aDDF <- cs %>% select(cDDF) %>% alpha()
+print(aDDF$total$std.alpha)
+aEOT <- cs %>% select(cEOT) %>% alpha()
+print(aEOT$total$std.alpha)
+```
+
+##Music Use Scale 
+###Scores
+```{r}
+cMUSEcog <- c("MUSE1_1", "MUSE2_1", "MUSE3_1", "MUSE4_1", "MUSE5_1", "MUSE6_1", "MUSE7_1")
+cMUSEsoc <- c("MUSE8_1", "MUSE9_1", "MUSE10_1")
+
+cs <- cs %>% mutate(MUSEcog = cs %>% select(cMUSEcog) %>% rowSums(),
+                    MUSEsoc = cs %>% select(cMUSEsoc) %>% rowSums()) 
+```
+
+###Alpha 
+```{r}
+aMUSEcog <- cs %>% select(cMUSEcog) %>% alpha()
+print(aMUSEcog$total$std.alpha)
+aMUSEsoc <- cs %>% select(cMUSEsoc) %>% alpha()
+print(aMUSEsoc$total$std.alpha)
+```
+
+#Get descriptives 
+```{r}
+cs %>% select(Alexithymia,
+              DID,
+              DDF,
+              EOT,
+              ILtot,
+              RLtot,
+              MHtot,
+              COPtot,
+              PAINtot,
+              SENtot,
+              MUSEsoc,
+              MUSEcog,
+              Hours_listening_music,
+              Days_a_week_listen_music) %>% describe() %>% kable()
+```
+
+
