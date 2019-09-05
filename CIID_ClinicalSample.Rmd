@@ -141,13 +141,24 @@ cs %>% select(id, ILtot, RLtot, MHtot, COPtot, PAINtot, SENtot) %>% kable()
 ```
 ###Reliability 
 
-```{r eval=FALSE}
-cs %>% select(IL) %>% alpha()
-cs %>% select(RL) %>% alpha()
-cs %>% select(MH) %>% alpha()
-cs %>% select(COP) %>% alpha()
-cs %>% select(PAIN) %>% alpha()
-cs %>% select(SEN) %>% alpha()
+```{r eval=TRUE}
+aIL <- cs %>% select(cIL) %>% alpha()
+print(aIL$total$std.alpha)
+aRL <- cs %>% select(cRL) %>% alpha()
+print(aRL$total$std.alpha)
+
+aMH <- cs %>% select(cMH) %>% alpha()
+print(aMH$total$std.alpha)
+
+aCOP <- cs %>% select(cCOP) %>% alpha()
+print(aCOP$total$std.alpha)
+
+aPAIN <- cs %>% select(cPAIN) %>% alpha()
+print(aPAIN$total$std.alpha)
+
+aSEN <- cs %>% select(cSEN) %>% alpha()
+print(aSEN$total$std.alpha)
+
 ```
 
 
@@ -195,9 +206,20 @@ aMUSEsoc <- cs %>% select(cMUSEsoc) %>% alpha()
 print(aMUSEsoc$total$std.alpha)
 ```
 
+
+# DERS 
+## Due to time constrainsts the DERS was shorted to 4 items that loaded highest onto the factor
+
+```{r ders}
+cs <- cs %>% mutate(DERS = rowSums(select(., DERS6_1_1:DERS6_6_1)))
+
+aDERS <- cs %>% select(DERS6_1_1:DERS6_6_1) %>% alpha()
+aDERS$total$std.alpha
+```
+
 #Get descriptives 
 ```{r}
-cs %>% select(Alexithymia,
+csInterestVars <- cs %>% select(Alexithymia,
               DID,
               DDF,
               EOT,
@@ -209,8 +231,56 @@ cs %>% select(Alexithymia,
               SENtot,
               MUSEsoc,
               MUSEcog,
+              DERS,
               Hours_listening_music,
-              Days_a_week_listen_music) %>% describe() %>% kable()
+              Days_a_week_listen_music) 
+
+csInterestVars %>% skimr::skim() %>% skimr::kable()
 ```
 
+```{r correlations}
+
+visdat::vis_dat(csInterestVars)
+
+
+csInterestVarsRename <- csInterestVars %>% 
+  rename(TAS = Alexithymia,
+         IL = ILtot,
+         RL = RLtot,
+         MH = MHtot,
+         COP = COPtot,
+         PAIN = PAINtot,
+         SEN = SENtot,
+         MUSE_S = MUSEsoc,
+         MUSE_c = MUSEcog,
+         Hours = Hours_listening_music,
+         Days = Days_a_week_listen_music)
+
+corrplot::corrplot(corr = (cor(csInterestVarsRename, use = "pairwise.complete.obs")),
+                   method = "ellipse",
+                   diag = FALSE,
+                   type = "upper",
+                   sig.level = .05,
+                   insig = "blank",
+                   p.mat = corrplot::cor.mtest(csInterestVarsRename, conf.level = .95)$p,
+                   number.cex= 7/ncol(csInterestVarsRename),
+                   tl.cex = 20/nrow(csInterestVarsRename),
+                   )
+
+
+
+corrplot::corrplot(corr = (cor(csInterestVarsRename, use = "pairwise.complete.obs")),
+                   method = "number",
+                   diag = FALSE,
+                   type = "lower",
+                   sig.level = .05,
+                   insig = "blank",
+                   p.mat = corrplot::cor.mtest(csInterestVarsRename, conf.level = .95)$p, 
+                   number.cex= 7/ncol(csInterestVarsRename),
+                   tl.cex = 20/nrow(csInterestVarsRename)
+                   )
+
+
+apaTables::apa.cor.table(csInterestVars)
+```
 
